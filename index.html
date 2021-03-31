@@ -36,7 +36,6 @@
 		<script src="js/FBXLoader.js"></script>
 
 		<script src="js/OrbitControls.js"></script>
-		<script src="out.js"></script>
 
 
 		<script>
@@ -63,10 +62,10 @@
 
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.set( 0, -20, 0 );
+				camera.position.set( 100, 200, 300 );
 
 				controls = new THREE.OrbitControls( camera );
-				controls.target.set( 0, 0, 0 );
+				controls.target.set( 0, 100, 0 );
 				controls.update();
 
 				scene = new THREE.Scene();
@@ -87,38 +86,47 @@
 				scene.add( light );
 
 				// scene.add( new THREE.CameraHelper( light.shadow.camera ) );
-				var geometry = new THREE.BoxGeometry( 10, 10, 1 );
-				var material = new THREE.MeshBasicMaterial( {color: 0x00ff00});
-				this.cube = new THREE.Mesh( geometry, material );
-				scene.add( this.cube );
 
-				console.log(parseFloat(MPU[0]["Gx"]))
-				var self = this
-				var cnt = 0
-				setInterval(function() {
-					this.cube.rotation.x = parseFloat(MPU[cnt]["Gx"])
-					this.cube.rotation.y = parseFloat(MPU[cnt]["Gy"])
-					this.cube.rotation.z = parseFloat(MPU[cnt]["Gz"])
-					console.log(MPU[cnt]["T"])
-					cnt += 1
-				}, 100)
-				/*
-				setInterval(function() {
-					loadMPU()
-			  }, 1000)
-				function loadMPU() {
-				  var xhttp = new XMLHttpRequest();
-				  xhttp.onreadystatechange = function() {
-				    if (this.readyState == 4 && this.status == 200) {
-							self.cube.rotation.x = parseFloat(GYRO_NOW["Gx"])
-							self.cube.rotation.y = parseFloat(GYRO_NOW["Gy"])
-							self.cube.rotation.z = parseFloat(GYRO_NOW["Gz"])
-							console.log(GYRO_NOW["Gx"])
-				    }
-				  };
-				  xhttp.open("GET", "http://192.168.55.1:8000/out.json", true);
-				  xhttp.send();
-				}*/
+				// ground
+				var mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2000, 2000 ), new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false } ) );
+				mesh.rotation.x = - Math.PI / 2;
+				mesh.receiveShadow = true;
+				scene.add( mesh );
+
+				var grid = new THREE.GridHelper( 2000, 20, 0x000000, 0x000000 );
+				grid.material.opacity = 0.2;
+				grid.material.transparent = true;
+				scene.add( grid );
+
+				// model
+				var loader = new THREE.FBXLoader();
+				loader.load( 'inspectedfbx.fbx', function ( object ) {
+					object.name = "inspectedObject";
+					object.mixer = new THREE.AnimationMixer( object );
+					mixers.push( object.mixer );
+
+					var action = object.mixer.clipAction( object.animations[ 0 ] );
+					action.play();
+
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+
+						}
+
+					} );
+
+					scene.add( object );
+					inspect(false);
+					setTimeout(function() {
+						if (!manualControl) {
+							map();
+						}
+					}, 5000);
+				} );
 
 
 
